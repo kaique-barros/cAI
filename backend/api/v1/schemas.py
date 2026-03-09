@@ -19,12 +19,11 @@ class ChatResponse(BaseModel):
     titulo: str
     icone: Optional[str] = None
     background: Optional[str] = None
-    contexto_inicial: Optional[str] = None  # <-- AQUI ESTÁ A SOLUÇÃO!
+    contexto_inicial: Optional[str] = None
     data_atualizacao: datetime
     mensagens: List[MensagemResponse] = []
     model_config = ConfigDict(from_attributes=True)
 
-# Estas duas classes são essenciais para criar e editar o chat
 class ChatCreate(BaseModel):
     titulo: str = "Nova Conversa"
 
@@ -36,10 +35,8 @@ class ChatUpdate(BaseModel):
 
 class GerarRespostaRequest(BaseModel):
     prompt: str
-    tipo: str = "texto"
     modelo: str = "llama3"
     stream: bool = True
-    imagem_base64: Optional[str] = None
 
 class ModeloIAResponse(BaseModel):
     id: int
@@ -62,3 +59,10 @@ class DownloadRequest(BaseModel):
 class ConfigUpdate(BaseModel):
     contexto_global: str
     modelo_padrao: str
+
+    # Adicione no final do seu arquivo schemas.py
+class InterpretacaoImagemRequest(BaseModel):
+    prompt: Optional[str] = "Descreva esta imagem com o máximo de detalhes."
+    imagem_base64: str
+    modelo: str = "llava" # Forçamos o padrão para llava
+    stream: bool = True

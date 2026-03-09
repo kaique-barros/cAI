@@ -36,7 +36,7 @@ export const Api = {
     // --- MENSAGENS ---
     async enviarPergunta(chatId, payload) {
         // Rota de geração de resposta agora centralizada no v1
-        return await fetch(`/api/v1/chats/${chatId}/gerar_resposta`, {
+        return await fetch(`/api/v1/chats/${chatId}/send_message/text`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

@@ -47,50 +47,25 @@ def atualizar_chat(chat_id: int, req: schemas.ChatUpdate, db: Session = Depends(
     db.commit()
     return {"status": "sucesso"}
 
-@router.post("/{chat_id}/gerar_resposta")
+@router.post("/{chat_id}/send_message/text")
 async def gerar_resposta(chat_id: int, req: schemas.GerarRespostaRequest, db: Session = Depends(get_db)):
     chat = ChatRepository.obter_chat(db, chat_id)
     if not chat: raise HTTPException(status_code=404, detail="Chat não encontrado")
 
-    caminho_img_user = None
-    if req.imagem_base64:
-        caminho_img_user = ImageService.salvar_imagem_base64(req.imagem_base64, "uploads")
-
-    # Salva pergunta do usuário
+    # Salva a pergunta do utilizador (Apenas Texto)
     ChatRepository.salvar_mensagem(db, {
-        "chat_id": chat_id, "papel": "user", "conteudo": req.prompt,
-        "modelo_utilizado": req.modelo, "caminho_imagem": caminho_img_user
+        "chat_id": chat_id, 
+        "papel": "user", 
+        "conteudo": req.prompt,
+        "modelo_utilizado": req.modelo
     })
-
-    # --- LÓGICA DE IMAGEM (STABLE DIFFUSION) ---
-    if req.tipo == "imagem":
-        # Nota: O req.imagem_base64 aqui permite o Img2Img do seu Colab
-        resultado = await AIService.gerar_imagem({
-            "prompt": req.prompt, 
-            "imagem_base64": req.imagem_base64 
-        })
-        
-        if "error" in resultado:
-            raise HTTPException(status_code=500, detail=resultado["error"])
-            
-        caminho_ia = ImageService.salvar_imagem_base64(resultado["imagem_base64"], "uploads")
-        msg_ai = ChatRepository.salvar_mensagem(db, {
-            "chat_id": chat_id, "papel": "assistant", "conteudo": "Imagem gerada.",
-            "modelo_utilizado": req.modelo, "caminho_imagem": caminho_ia
-        })
-        
-        # Prepara resposta JSON simples para o frontend
-        res = schemas.MensagemResponse.model_validate(msg_ai).model_dump()
-        res["caminho_imagem"] = res["caminho_imagem"].replace("data/media/", "/media/")
-        return res
 
     async def event_generator():
         texto_acumulado = ""
-        payload = req.model_dump(exclude_none=True)
+        mensagens_formatadas = []
         
-        # --- TÁTICA INFALÍVEL DE CONTEXTO ---
+        # 1. INJETAR CONTEXTO DE SISTEMA
         contexto_final = ""
-        
         try:
             config = db.query(models.Configuracao).first()
             if config and config.contexto_global:
@@ -102,17 +77,46 @@ async def gerar_resposta(chat_id: int, req: schemas.GerarRespostaRequest, db: Se
             contexto_final += f"Instrução Específica: {chat.contexto_inicial}\n"
         
         if contexto_final.strip():
-            # O TRUQUE: Injetamos o contexto de forma "invisível" DIRETAMENTE na pergunta!
-            texto_original = payload["prompt"]
-            payload["prompt"] = f"Aja estritamente de acordo com as seguintes regras:\n[{contexto_final.strip()}]\n\nPergunta do utilizador: {texto_original}"
-        # ------------------------------------
+            mensagens_formatadas.append({
+                "role": "system",
+                "content": f"Aja estritamente de acordo com as seguintes regras:\n[{contexto_final.strip()}]"
+            })
+            
+        # 2. INJETAR HISTÓRICO DA CONVERSA
+        historico = chat.mensagens[-20:] if len(chat.mensagens) > 20 else chat.mensagens
+        for msg in historico:
+            if not msg.conteudo: continue
+            mensagens_formatadas.append({
+                "role": msg.papel,
+                "content": msg.conteudo
+            })
+            
+        # 3. INJETAR NOVA PERGUNTA
+        mensagens_formatadas.append({
+            "role": "user",
+            "content": req.prompt
+        })
 
+        # Payload limpo, exclusivamente focado em texto e histórico
+        payload = {
+            "modelo": req.modelo, 
+            "messages": mensagens_formatadas,
+            "stream": req.stream
+        }
+
+        # 4. STREAMING DA RESPOSTA
         async for chunk_data in AIService.gerar_texto_stream(payload):
-            chunk = chunk_data.get("response", "")
+            chunk = ""
+            if "message" in chunk_data and "content" in chunk_data["message"]:
+                chunk = chunk_data["message"]["content"]
+            elif "response" in chunk_data:
+                chunk = chunk_data["response"]
+                
             if chunk:
                 texto_acumulado += chunk
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         
+        # Guardar resposta final da IA
         msg_ai = ChatRepository.salvar_mensagem(db, {
             "chat_id": chat_id,
             "papel": "assistant",
@@ -132,7 +136,6 @@ def eliminar_mensagem(mensagem_id: int, db: Session = Depends(get_db)):
     chat_id = msg.chat_id
     papel = msg.papel
 
-    # Lógica de cascata: se apagar a pergunta do user, apaga a resposta da IA seguinte
     if papel == "user":
         proxima_msg = db.query(models.Mensagem).filter(
             models.Mensagem.chat_id == chat_id,
@@ -145,3 +148,18 @@ def eliminar_mensagem(mensagem_id: int, db: Session = Depends(get_db)):
     db.delete(msg)
     db.commit()
     return {"status": "sucesso"}
+
+@router.delete("/apagar/{chat_id}")
+def apagar_chat(chat_id: int, db: Session = Depends(get_db)):
+    chat = db.query(models.Chat).filter(models.Chat.id == chat_id).first()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat não encontrado")
+    
+    # 1. Apagar as mensagens associadas para evitar erros de integridade (Foreign Key)
+    db.query(models.Mensagem).filter(models.Mensagem.chat_id == chat_id).delete()
+    
+    # 2. Apagar o chat
+    db.delete(chat)
+    db.commit()
+    
+    return {"status": "sucesso", "mensagem": "Chat excluído com sucesso"}

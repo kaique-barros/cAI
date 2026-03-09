@@ -49,6 +49,8 @@ async function inicializarApp() {
 
     const btnConfigChat = document.getElementById('btn-config-chat');
     const btnSalvarChat = document.getElementById('btn-salvar-chat');
+	Modals.init();
+	UI.initScrollButton();
 
     // EVENTOS CHAT/SIDEBAR
     if (btnNovoChat) {
@@ -229,6 +231,7 @@ async function inicializarApp() {
 
 async function abrirChat(id) {
     chatIdAtual = id;
+	window.currentChatId = id;
     const chats = await Api.buscarChats();
     const chat = chats.find(c => c.id === id);
     

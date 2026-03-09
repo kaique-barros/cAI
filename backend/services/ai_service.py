@@ -38,8 +38,8 @@ class AIService:
 
     @staticmethod
     async def gerar_texto_stream(payload):
-        print(f"Enviando pedido ao Colab (Modelo: {payload.get('modelo')})...")
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        print(f"A enviar pedido de texto ao Colab (Modelo: {payload.get('modelo')})...")
+        async with httpx.AsyncClient(timeout=600.0) as client:
             try:
                 async with client.stream("POST", f"{settings.COLAB_URL}/gerar_texto", json=payload, headers=AIService.HEADERS) as resp:
                     
@@ -66,21 +66,3 @@ class AIService:
             except httpx.RequestError as e:
                 print(f"Falha de rede: {e}")
                 yield {"response": f"\n⚠️ Falha ao contactar o Colab. O servidor poderá estar inativo. Detalhe: {e}"}
-
-    # Adicione este método à classe AIService no ficheiro backend/services/ai_service.py
-    @staticmethod
-    async def gerar_imagem(payload):
-        print(f"Enviando pedido de imagem ao Colab (Modelo: {payload.get('modelo')})...")
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            try:
-                resp = await client.post(
-                        f"{settings.COLAB_URL}/gerar_imagem", 
-                        json=payload, 
-                        headers=AIService.HEADERS
-                        )
-                if resp.status_code == 200:
-                    return resp.json() # Retorna {"imagem_base64": "..."}
-                else:
-                    return {"error": f"Erro no Colab: {resp.text}"}
-            except Exception as e:
-                return {"error": f"Falha de rede: {e}"}

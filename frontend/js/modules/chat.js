@@ -1,114 +1,110 @@
 /**
- * chat.js - Gere a lógica de envio, recepção e processamento de mensagens.
+ * chat.js - Lida exclusivamente com a lógica de envio de mensagens e streaming (SSE).
  */
-
-import { Api } from './api.js';
 import { UI } from './ui.js';
 
 export const Chat = {
-    async enviar(chatId, texto, imagemBase64, config) {
-        const { modelo, isStream, indicadorId } = config;
-        const tipo = modelo === 'stable-diffusion' ? 'imagem' : 'texto';
+    async enviar(chatId, texto, imagemBase64, opcoes = { modelo: 'llama3', isStream: true, indicadorId: null, callbackZoom: null }) {
+        
+        // 1. Prepara o payload base
+        const payload = {
+            prompt: texto,
+            modelo: opcoes.modelo,
+            stream: opcoes.isStream
+        };
+
+        // 2. Lógica de Roteamento Inteligente
+        let endpoint = `/api/v1/chats/${chatId}/send_message/text`;
+
+        if (imagemBase64) {
+            payload.imagem_base64 = imagemBase64;
+            endpoint = `/api/v1/chats/${chatId}/send_message/image/interpret`;
+            console.log("📷 Imagem detetada! Roteando para interpretação de visão.");
+        } else {
+            console.log("📝 Roteando para endpoint de texto padrão.");
+        }
 
         try {
-            const payload = { 
-                prompt: texto || " ", 
-                tipo: tipo, 
-                modelo: modelo, 
-                stream: isStream 
-            };
-            if (imagemBase64) payload.imagem_base64 = imagemBase64;
+            // 3. Faz a requisição para o endpoint selecionado
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-            const resposta = await Api.enviarPergunta(chatId, payload);
-
-            if (!resposta.ok) throw new Error("Erro na comunicação com o servidor.");
-            
-            const loader = document.getElementById(indicadorId);
-            if (loader) loader.remove();
-
-            if (tipo === 'imagem' || !isStream) {
-                const mensagemIA = await resposta.json();
-                UI.adicionarMensagem(mensagemIA, config.callbackZoom);
-            } else {
-                await this.processarStream(resposta, modelo, chatId, config.callbackZoom);
+            if (!response.ok) {
+                const erro = await response.text();
+                throw new Error(`Erro do servidor: ${erro}`);
             }
-        } catch (erro) {
-            console.error("Erro no Chat:", erro);
-            const loader = document.getElementById(indicadorId);
-            if (loader) loader.remove();
-            UI.adicionarMensagem({ papel: 'assistant', conteudo: "⚠️ Erro de conexão com a IA." });
-        }
-    },
 
-    async processarStream(resposta, modelo, chatId, callbackZoom) {
-        const divIA = this.criarBalaoVazioStream(modelo);
-        const conteudoDiv = divIA.querySelector('.conteudo-texto');
-        let textoAcumulado = '';
+            const divIA = document.getElementById(`msg-container-${opcoes.indicadorId}`);
+            if (!divIA) return;
 
-        const reader = resposta.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+            // Encontra a div interna onde o texto realmente fica
+            const conteudoIA = divIA.querySelector('.text-sm');
+            if (!conteudoIA) return;
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+            conteudoIA.innerHTML = ''; // Limpa o "..." inicial
 
-            buffer += decoder.decode(value, { stream: true });
-            const linhas = buffer.split('\n');
-            buffer = linhas.pop();
+            if (opcoes.isStream) {
+                // LÓGICA DE STREAMING (Efeito máquina de escrever)
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
 
-            for (const linha of linhas) {
-                const linhaLimpa = linha.trim();
-                if (!linhaLimpa || !linhaLimpa.startsWith('data: ')) continue;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                try {
-                    const dados = JSON.parse(linhaLimpa.substring(6));
-                    if (dados.chunk) {
-                        textoAcumulado += dados.chunk;
-                        conteudoDiv.textContent = textoAcumulado;
-                        UI.rolarParaBaixo();
-                    } else if (dados.fim) {
-                        this.finalizarBalaoStream(divIA, dados.id, textoAcumulado, callbackZoom);
+                    const chunk = decoder.decode(value, { stream: true });
+                    const linhas = chunk.split('\n');
+
+                    for (const linha of linhas) {
+                        if (linha.startsWith('data: ')) {
+                            try {
+                                const dados = JSON.parse(linha.substring(6));
+                                
+                                if (dados.fim) {
+                                    // A IA terminou de responder. Atualizamos o ID temporário para o ID real do banco.
+                                    divIA.id = `msg-container-${dados.id}`;
+                                    
+                                    // Atualizamos também os botões de ação (Apagar/Regerar) com o ID real
+                                    const btnApagar = divIA.querySelector('button[title="Apagar"]');
+                                    const btnRegerar = divIA.querySelector('button[title="Regerar resposta"]');
+                                    
+                                    if (btnApagar) btnApagar.setAttribute('onclick', `window.apagarMensagem('${dados.id}')`);
+                                    if (btnRegerar) btnRegerar.setAttribute('onclick', `window.regerarMensagem('${dados.id}')`);
+                                    break;
+                                }
+
+                                if (dados.chunk) {
+                                    // Anexa o novo texto gerado
+                                    conteudoIA.innerHTML += dados.chunk;
+                                    UI.rolarParaBaixo();
+                                }
+                            } catch (e) {
+                                console.warn("Erro ao fazer parse do chunk SSE:", e, linha);
+                            }
+                        }
                     }
-                } catch (e) {
-                    console.error("Erro ao processar chunk:", e);
+                }
+            } else {
+                // LÓGICA SEM STREAM (Aguarda a resposta completa)
+                // (Atualmente o backend força stream, mas mantemos por segurança)
+                const data = await response.json();
+                if (data.conteudo) {
+                    conteudoIA.innerHTML = data.conteudo;
                 }
             }
-        }
-    },
 
-    // Usa exatamente as mesmas classes visuais do UI.js
-    criarBalaoVazioStream(modelo) {
-        const div = document.createElement('div');
-        div.className = `flex w-full mb-4 justify-start animate-fade-in`;
-        div.innerHTML = `
-            <div class="bg-slate-800 text-slate-100 rounded-2xl rounded-tl-none mr-auto max-w-[85%] sm:max-w-[75%] p-4 border border-slate-700 shadow-sm w-full relative group">
-                <div class="text-[10px] font-bold mb-2 opacity-50 flex items-center justify-between">
-                    <span><i class="fa-solid fa-robot mr-1"></i> AI (${modelo})</span>
-                    <i class="fa-solid fa-circle-notch fa-spin text-blue-500 ml-2 id-spinner"></i>
-                </div>
-                <div class="conteudo-texto text-sm leading-relaxed whitespace-pre-wrap"></div>
-            </div>
-        `;
-        const area = document.getElementById('area-mensagens');
-        if (area) {
-            area.appendChild(div);
-            area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
-        }
-        return div;
-    },
-
-    finalizarBalaoStream(div, id, textoAcumulado, callbackZoom) {
-        const balaoInterno = div.firstElementChild;
-        balaoInterno.dataset.id = id;
-        balaoInterno.dataset.papel = 'assistant';
-
-        const spinner = div.querySelector('.id-spinner');
-        if (spinner) spinner.remove();
-
-        const conteudoDiv = div.querySelector('.conteudo-texto');
-        if (conteudoDiv) {
-            conteudoDiv.innerHTML = textoAcumulado.replace(/\n/g, '<br>');
+        } catch (error) {
+            console.error("Falha ao enviar mensagem:", error);
+            const divIA = document.getElementById(`msg-container-${opcoes.indicadorId}`);
+            if (divIA) {
+                const conteudoIA = divIA.querySelector('.text-sm');
+                if (conteudoIA) {
+                    conteudoIA.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Falha na comunicação com a IA. Tente novamente.</span>`;
+                }
+            }
         }
     }
 };

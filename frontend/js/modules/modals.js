@@ -73,5 +73,70 @@ export const Modals = {
             `;
             grid.appendChild(div);
         });
+    },
+
+    // --- LÓGICA ESPECÍFICA: INICIALIZAR EVENTOS DOS MODAIS ---
+    init() {
+        // Inicializa o evento do botão de apagar chat
+        const btnApagarChat = document.getElementById('btn-apagar-chat');
+        if (btnApagarChat) {
+            btnApagarChat.addEventListener('click', async () => {
+                // Presumimos que window.currentChatId guarda o ID do chat ativo
+                const chatId = window.currentChatId;
+                if (!chatId) return;
+
+                // Mostra o popup de confirmação do SweetAlert2
+                const resultado = await Swal.fire({
+                    title: 'Tem a certeza?',
+                    text: "Todo o histórico e imagens desta conversa serão apagados!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626', // bg-red-600
+                    cancelButtonColor: '#475569',  // bg-slate-600
+                    confirmButtonText: 'Sim, apagar chat!',
+                    cancelButtonText: 'Cancelar',
+                    background: '#0f172a', // bg-slate-900 (tema escuro)
+                    color: '#f8fafc', // text-slate-50
+                    customClass: {
+                        popup: 'border border-slate-700 rounded-xl'
+                    }
+                });
+
+                if (resultado.isConfirmed) {
+                    try {
+                        const resposta = await fetch(`/api/v1/chats/apagar/${chatId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (resposta.ok) {
+                            await Swal.fire({
+                                title: 'Apagado!',
+                                text: 'O chat foi removido com sucesso.',
+                                icon: 'success',
+                                background: '#0f172a',
+                                color: '#f8fafc',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            // Recarrega a página para atualizar a sidebar e limpar o ecrã
+                            window.location.reload();
+                        } else {
+                            throw new Error('Falha no servidor ao apagar chat.');
+                        }
+                    } catch (erro) {
+                        Swal.fire({
+                            title: 'Erro!',
+                            text: 'Não foi possível apagar o chat.',
+                            icon: 'error',
+                            background: '#0f172a',
+                            color: '#f8fafc'
+                        });
+                        console.error(erro);
+                    }
+                }
+            });
+        }
     }
 };
+
+// Não te esqueças de chamar Modals.init() no teu main.js ou UI.js quando a página carregar!

@@ -6,7 +6,7 @@
     <p class="text-slate-400 max-w-md">Selecione um chat ao lado ou crie uma nova conversa para começar a explorar os modelos locais.</p>
 </div>
 
-<div id="tela-chat" class="hidden flex-1 flex flex-col h-full bg-slate-900">
+<div id="tela-chat" class="hidden flex-1 flex flex-col h-full bg-slate-900 relative">
     <header class="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/50 backdrop-blur-md">
         <div class="flex items-center gap-3">
             <div id="chat-icon-header" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sm"></div>
@@ -21,6 +21,10 @@
     </header>
 
     <div id="area-mensagens" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar"></div>
+
+    <button id="btn-scroll-bottom" class="hidden absolute bottom-28 right-8 bg-slate-700/90 hover:bg-blue-600 text-white w-10 h-10 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 z-10 border border-slate-600 flex items-center justify-center">
+        <i class="fa-solid fa-chevron-down"></i>
+    </button>
 
     <div class="p-4 bg-slate-900">
         <div class="max-w-4xl mx-auto relative">

@@ -105,5 +105,32 @@ export const UI = {
     rolarParaBaixo() {
         const area = document.getElementById('area-mensagens');
         if (area) area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    },
+
+	// --- LÓGICA DO BOTÃO DE SCROLL ---
+    initScrollButton() {
+        const area = document.getElementById('area-mensagens');
+        const btnScroll = document.getElementById('btn-scroll-bottom');
+
+        if (!area || !btnScroll) return;
+
+        // Mostrar o botão quando o utilizador fizer scroll para cima
+        area.addEventListener('scroll', () => {
+            // Verifica a distância do fundo. Se for maior que 100px, mostra o botão.
+            const distParaFundo = area.scrollHeight - area.scrollTop - area.clientHeight;
+            
+            if (distParaFundo > 100) {
+                btnScroll.classList.remove('hidden');
+                // Pequena animação para aparecer
+                btnScroll.classList.add('animate-fade-in'); 
+            } else {
+                btnScroll.classList.add('hidden');
+            }
+        });
+
+        // Evento de clique no botão para rolar para baixo
+        btnScroll.addEventListener('click', () => {
+            this.rolarParaBaixo();
+        });
     }
 };
