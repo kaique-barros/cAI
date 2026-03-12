@@ -1,0 +1,20 @@
+{
+  "active_provider": "colab_ngrok",
+  "endpoints": {
+    "local_ollama": "http://localhost:11434",
+    "colab_ngrok": "" 
+  },
+  "cot_models": {
+    "interpreter": "phi3.5",
+    "actor": "llama3.1:8b",
+    "vision": "moondream",
+    "embeddings": "nomic-embed-text",
+    "summarizer": "llama3.1:8b"
+  },
+  "parameters": {
+    "temperature_actor": 0.7,
+    "temperature_interpreter": 0.1,
+    "buffer_delay_seconds": 30,
+    "emotion_decay_lambda": 0.0001
+  }
+}

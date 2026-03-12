@@ -1,0 +1,18 @@
+{
+  "interacao": {
+    "mensagens": [],
+    "gerar_imagem": { "ativar": false, "prompt_visual": "" }
+  },
+  "modificacoes_internas": {
+    "roda_de_plutchik": {
+      "alegria": 0.0, "confianca": 0.0, "medo": 0.0, "surpresa": 0.0,
+      "tristeza": 0.0, "nojo": 0.0, "raiva": 0.0, "antecipacao": 0.0
+    }
+  },
+  "atualizacoes_de_grafo": {
+    "novos_fatos": [
+      { "origem": "", "relacao": "", "destino": "" }
+    ],
+    "impacto_nas_relacoes": ""
+  }
+}

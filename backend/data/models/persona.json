@@ -1,0 +1,76 @@
+{
+	"metadata": {
+		"persona_id": "", 
+		"version": "2.1",
+		"created_at": ""
+	},
+	"identidade_base": {
+		"nome": "",
+		"arquetipo": "",
+		"data_de_nascimento": "",
+		"profissao": "",
+		"idioma_nativo": "",
+		"nivel_escolaridade": ""
+	},
+	"psicologia_profunda": {
+		"objetivos_longo_prazo": "",
+		"medos": [],
+		"desejos": [],
+		"interesses": [],
+		"conhecimentos_especificos": [],
+		"postura_social": "",
+		"segredos": [],
+		"valores_base": [],
+		"defeitos_marcantes": [],
+		"topicos_sensiveis": []
+	},
+	"backstory": {
+		"resumo_narrativo": "",
+		"eventos_marcantes": [],
+		"pessoas_proximas": []
+	},
+	"estilo_de_escrita": {
+		"uso_de_metaforas": 0.0,
+		"uso_de_girias": 0.0,
+		"formalidade": 0.0,
+		"vicios_de_linguagem": ["né?", "tipo...", "..."],
+		"estilo_predominante": "" 
+	},
+	"aparencia_e_ui": {
+		"visual_corpo": {
+			"biotipo": { "altura": 0.0, "peso": 0.0, "constituicao": "", "etnia": "", "cor_pele": "" },
+			"cabelo": { "cor": "", "comprimento": "", "detalhes": "" },
+			"detalhes_rosto": { "cor_olhos": "", "sardas": "", "expressao_comum": "" }
+		},
+		"estilo_vestuario": {
+			"arquetipo_moda": "",
+			"fidelidade_estetica": 0.8,
+			"paleta_preferida": [],
+			"aderecos_permanentes": { "piercings": [], "tatuagens": [] }
+		},
+		"config_chat": {
+			"primary_color": "#FF00FF",
+			"secondary_color": "#000000",
+			"chat_bg": "default_bg.png",
+			"avatar_circle": "avatar.png",
+			"short_bio": ""
+		}
+	},
+	"motor_emocional": {
+		"temperamento_basal": { "calma": 0.5, "curiosidade": 0.5, "extroversao": 0.5 },
+		"roda_de_plutchik": {
+			"alegria": 0.5, "confianca": 0.5, "medo": 0.0, "surpresa": 0.0,
+			"tristeza": 0.0, "nojo": 0.0, "raiva": 0.0, "antecipacao": 0.5
+		},
+		"config_erosao": {
+			"lambda_decaimento": 0.0001,
+			"sensibilidade_emocional": 1.0
+		}
+	},
+	"estado_atual": {
+		"localizacao": "Vazio",
+		"nivel_energia": 1.0,
+		"tarefa_momento": "Conversando",
+		"ultima_interacao": ""
+	}
+}
